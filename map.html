@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Election District Map</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 40.7128, lng: -73.93},
+          zoom: 11
+        });
+        map.data.loadGeoJson('https://data.cityofnewyork.us/api/geospatial/h2n3-98hq?method=export&format=GeoJSON');
+
+        var distToVotes = {};
+        var voteRequest = new Request('/precincts');
+        fetch(voteRequest).then(data => {
+          return data.json();
+        }).then(data => {
+          for (var i in data) {
+            var precinctParts = data[i].precinct.split('/');
+            var key = precinctParts[1] + precinctParts[0];
+            distToVotes[key] = data[i];
+          }
+
+          map.data.setStyle((feature) => {
+            var electDist = feature.getProperty('elect_dist');
+            var color = 'grey';
+            if(electDist in distToVotes) {
+              var distVotes = distToVotes[electDist].votes;
+              var candidateWithTheMost = Object.keys(distVotes)[0];
+              Object.keys(distVotes).forEach((key) => {
+                if (distVotes[key] > distVotes[candidateWithTheMost]) {
+                  candidateWithTheMost = key;
+                }
+              });
+
+              if (candidateWithTheMost.includes('Trump')) {
+                color = 'red';
+              }
+              else if (candidateWithTheMost.includes('Clinton')) {
+                color = 'blue';
+              }
+            }
+            return {fillColor: color, fillOpacity: 0.4, strokeWeight: 1};
+          });
+          let infowindow = new google.maps.InfoWindow({
+            pixelOffset: new google.maps.Size(10,-10)
+          });
+          map.data.addListener('click', (event) => {
+            let electDist = event.feature.getProperty('elect_dist');
+            let distInfo = distToVotes[electDist];
+            console.log(electDist, 'electDist');
+            console.log(distToVotes, 'distToVotes');
+            console.log(distInfo, 'distInfo');
+            let votes = distInfo.votes;
+            let content = 'Election district: '+ electDist + '<br />';
+            Object.keys(votes).forEach((key) => {
+              content += '<br /> + ' + key + ': '+ votes[key];
+            });
+            infowindow.setContent(content);
+            infowindow.setPosition(event.latLng);
+            infowindow.open(map);
+          });
+        });
+
+
+
+
+      }
+    </script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCxNfc0r508vI8oUbyGAw9j0m2ZmM5CZKA&callback=initMap"
+    async defer></script>
+  </body>
+</html>

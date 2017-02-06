@@ -65,8 +65,18 @@ class UploadHandler(webapp2.RequestHandler):
         for key in results:
             results[key].put()
         self.response.write('done')
+class PrecinctsHandler(webapp2.RequestHandler):
+    def get(self):
+        results = []
+        precincts = list(PrecinctVotes.query())
+        for value in precincts:
+                results.append(value.to_dict())
+
+        self.response.out.write(json.dumps(results))
+        self.response.headers.add_header('Content-Type', 'application/json')
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
-    ('/upload', UploadHandler)
+    ('/upload', UploadHandler),
+    ('/precincts', PrecinctsHandler)
 ], debug=True)
