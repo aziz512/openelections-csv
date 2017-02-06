@@ -22,10 +22,9 @@ from google.appengine.ext import ndb
 
 
 class PrecinctVotes(ndb.Model):
-    precint = ndb.StringProperty()
+    precinct = ndb.StringProperty()
     county = ndb.StringProperty()
     votes = ndb.JsonProperty()
-
 
 def process_csv(csv_data):
     precinct_to_votes = {} #final data object
@@ -51,7 +50,7 @@ def process_csv(csv_data):
                 #if duplicate just add up votes
                 candidates[candidate[5]] = int(candidates[candidate[5]]) + int(candidate[6])
         #saving candidates dict into the main data output
-        precinct_to_votes[precinct] = {'county': precinctCounties[precinct], 'precinct': precinct, 'votes': candidates}
+        precinct_to_votes[precinct] = PrecinctVotes(id = precinctCounties[precinct] + '__' + precinct , county = precinctCounties[precinct], precinct = precinct, votes = candidates)
 
     return precinct_to_votes
 
@@ -62,7 +61,10 @@ class MainHandler(webapp2.RequestHandler):
 class UploadHandler(webapp2.RequestHandler):
     def post(self):
         csv_data = self.request.POST.get('csv-file').file.read()
-        self.response.write(process_csv(csv_data))
+        results = process_csv(csv_data)
+        for key in results:
+            results[key].put()
+        self.response.write('done')
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
